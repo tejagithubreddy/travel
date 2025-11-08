@@ -1,0 +1,65 @@
+global:
+  namespace: travel
+
+frontend:
+  enabled: true
+  image: "ghcr.io/you/travel-frontend:1.2.3"
+  replicaCount: 2
+  service:
+    port: 80
+  resources:
+    requests:
+      cpu: "100m"
+      memory: "128Mi"
+    limits:
+      cpu: "250m"
+      memory: "256Mi"
+
+backend:
+  enabled: true
+  image: "ghcr.io/you/travel-backend:1.2.3"
+  replicaCount: 2
+  service:
+    port: 8080
+  env:
+    NODE_ENV: production
+    # DB connection will be injected by the chart
+  resources:
+    requests:
+      cpu: "200m"
+      memory: "256Mi"
+    limits:
+      cpu: "500m"
+      memory: "512Mi"
+
+postgres:
+  enabled: true
+  image: "postgres:15"
+  postgresUser: travel_user
+  postgresPassword: travel_pass   # replace; in production use helm secrets or external secret
+  postgresDatabase: traveldb
+  persistence:
+    enabled: true
+    size: 10Gi
+
+ingress:
+  enabled: true
+  hostname: "travel.example.com"
+  tls:
+    enabled: true
+    secretName: travel-tls
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+
+autoscaling:
+  frontend:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 5
+    targetCPUUtilizationPercentage: 60
+  backend:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 8
+    targetCPUUtilizationPercentage: 60
