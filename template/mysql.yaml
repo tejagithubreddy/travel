@@ -1,0 +1,68 @@
+{{- if .Values.postgres.enabled }}
+apiVersion: v1
+kind: Secret
+metadata:
+  name: {{ include "travel.fullname" . }}-mysql-secret
+type: Opaque
+data:
+  postgres-password: {{ .Values.mysql.mysqlPassword | b64enc }}
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "travel.fullname" . }}-mysql
+spec:
+  serviceName: {{ include "travel.fullname" . }}-mysql
+  replicas: 1
+  selector:
+    matchLabels:
+      app: {{ include "travel.fullname" . }}-mysql
+  template:
+    metadata:
+      labels:
+        app: {{ include "travel.fullname" . }}-mysql
+    spec:
+      containers:
+        - name: postgres
+          image: "{{ .Values.mysql.image }}"
+          ports:
+            - containerPort: 5432
+          env:
+            - name: MYSQL_DB
+              value: "{{ .Values.mysql.mysqlDatabase }}"
+            - name: MYSQL_USER
+              value: "{{ .Values.mysql.mysqlUser }}"
+            - name: MYSQL_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "travel.fullname" . }}-mysql-secret
+                  key: my-password
+          volumeMounts:
+            - name: mysql-data
+              mountPath: /var/lib/mysql/data
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "travel.fullname" . }}-mysql
+spec:
+  ports:
+    - port: 5432
+      name: mysql
+  clusterIP: None
+  selector:
+    app: {{ include "travel.fullname" . }}-mysql
+---
+{{- if .Values.mysql.persistence.enabled }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: mysql-data
+spec:
+  accessModes: ["ReadWriteOnce"]
+  resources:
+    requests:
+      storage: {{ .Values.mysql.persistence.size }}
+{{- end }}
+{{- end }}
+
